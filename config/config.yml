@@ -1,0 +1,19 @@
+# config/config.yml
+threads: 20
+playwright:
+  enabled: false
+  headless: true
+  timeout_ms: 60000
+
+# ... other settings ...
+
+redact:
+  enabled: true
+  mask_char: "*"
+  jwt_mask_prefix: "REDACTED_JWT_"
+
+notify:
+  provider: notify   # "notify" or "discord" (auto-detect prefer notify)
+  discord_webhook: ""   # paste your Discord webhook URL here
+  notify_args: ""       # optional extra args for 'notify' CLI
+
