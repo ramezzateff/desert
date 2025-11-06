@@ -37,7 +37,7 @@ mkdir -p "$WORK_DIR"
 SF_OUT="$WORK_DIR/subfinder.txt"
 FD_OUT="$WORK_DIR/findomain.txt"
 AS_OUT="$WORK_DIR/assetfinder.txt"
-AM_OUT="$WORK_DIR/amass.txt"
+# AM_OUT="$WORK_DIR/amass.txt"
 CRT_OUT="$WORK_DIR/crtsh.txt"
 
 SUBFILE="$WORK_DIR/subdomains.txt"
@@ -87,6 +87,48 @@ echo "    Configuration: Threads=$THREADS | Timeout=$TIMEOUT"
 [ "$FORCE" -eq 1 ] && echo "    ⚠️ Force mode: ON (will overwrite existing outputs)"
 [ "$PROBE" -eq 0 ] && echo "    ⚠️ Probe disabled: --no-probe"
 echo "-----------------------------------------------------"
+
+# -------------------------
+# cleanup on Ctrl+C (SIGINT)
+# -------------------------
+cleanup() {
+  echo "⚠️ Interrupted! Merging partial results..."
+  shopt -s nullglob
+  files=( "$SF_OUT" "$FD_OUT" "$AS_OUT" "$AM_OUT" "$CRT_OUT" )
+  any=0
+  : > "$SUBFILE"
+  for f in "${files[@]}"; do
+    if [ -f "$f" ]; then
+      any=1
+      sed 's/^\*\.//; s/,$//' "$f" >> "$SUBFILE"
+    fi
+  done
+
+  if [ "$any" -eq 1 ]; then
+    sort -u "$SUBFILE" -o "$SUBFILE"
+    echo "✅ Partial merge done. Subdomains saved to $SUBFILE"
+  else
+    echo "⚠️ No subdomains collected yet."
+  fi
+
+  # Normalize subdomains for httpx if probe enabled
+  if [ "$PROBE" -eq 1 ] && command -v httpx >/dev/null 2>&1 && [ -s "$SUBFILE" ]; then
+    sed -E 's|^(https?://)?([^/]+).*|https://\2|' "$SUBFILE" | sort -u > "$NORM_FILE"
+    echo "⚙️ Running partial httpx probe..."
+    if ! httpx -l "$NORM_FILE" -silent -no-color -threads "$THREADS" -timeout "$TIMEOUT" \
+        -mc 200,301,302,403,401 -o "$ALIVEFILE" >> "$LOGFILE" 2>&1; then
+      echo "⚠️ httpx failed on partial run"
+      : > "$ALIVEFILE"
+    fi
+    ALIVECOUNT=$(wc -l < "$ALIVEFILE" 2>/dev/null || echo 0)
+    echo "✅ Partial httpx done (alive: $ALIVECOUNT)"
+  fi
+
+  echo "⚠️ Exiting due to Ctrl+C."
+  exit 1
+}
+trap cleanup SIGINT
+
 
 # -------------------------
 # Passive collection (5 steps shown but only run available tools)
@@ -146,6 +188,8 @@ else
   fi
   CURRENT=$((CURRENT+1))
 
+  # to rerun amass remove first and last line of the block
+  : <<'AMASS_BLOCK' ... AMASS_BLOCK 
   # Amass (passive)
   step "$CURRENT" "$TOTAL_STEPS" "Running Amass (passive)..."
   if command -v amass >/dev/null 2>&1; then
@@ -160,6 +204,7 @@ else
     printf "✅ [%s/%s] Amass skipped (not installed)\n" "$CURRENT" "$TOTAL_STEPS"
   fi
   CURRENT=$((CURRENT+1))
+AMASS_BLOCK
 
   # crt.sh
   step "$CURRENT" "$TOTAL_STEPS" "Querying crt.sh..."
@@ -177,10 +222,10 @@ else
     printf "✅ [%s/%s] crt.sh skipped (curl/jq missing)\n" "$CURRENT" "$TOTAL_STEPS"
   fi
 
-  # merge & clean into final subdomains file
+  # merge & clean into final subdomains file add $AM_OUT
   echo "⚙️ Merging and cleaning results..."
   shopt -s nullglob
-  files=( "$SF_OUT" "$FD_OUT" "$AS_OUT" "$AM_OUT" "$CRT_OUT" )
+  files=( "$SF_OUT" "$FD_OUT" "$AS_OUT" "$CRT_OUT" )
   any=0
   : > "$WORK_DIR/merge_tmp.all"
   for f in "${files[@]}"; do
@@ -250,6 +295,7 @@ else
     printf "%s\n" "[$(date -Iseconds)] [WARN] httpx not installed or no subdomains to probe" >> "$LOGFILE"
     echo "⚙️ httpx not available; skipping probe"
   fi
+fi
 
 # -------------------------
 # Reports (quiet write)
@@ -305,4 +351,3 @@ echo "📝 Log (errors/warnings): $LOGFILE"
 echo "-----------------------------------------------------"
 
 exit 0
-

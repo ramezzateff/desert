@@ -6,6 +6,7 @@ from banner import show_banner
 from notify import send_notification
 from colors import yellow, cyan, reset, RED, GREEN
 from utils import run_bash_script
+from crawler.core import SkeletonCrawler
 
 def main():
     show_banner()
@@ -23,10 +24,10 @@ def main():
 
     # actions
     parser.add_argument("--subenum", action="store_true", help="Run subdomain enumeration (passive + optional probe)")
+    parser.add_argument("--urlgather", action="store_true", help="Run URL gathering using waybackurls, gau, katana")
     parser.add_argument("--crawl", action="store_true", help="Run web crawler")
     parser.add_argument("--scan", action="store_true", help="Run vulnerability scanner")
     parser.add_argument("--notify", action="store_true", help="Send test notification")
-    parser.add_argument("--urlgather", action="store_true", help="Run URL gathering using waybackurls, gau, katana")
 
     # show help when called with no args
     if len(sys.argv) == 1:
@@ -80,10 +81,21 @@ def main():
         return
     # other actions (placeholders)
     if args.crawl:
-        print("[+] Running web crawler... (not implemented)")
+        if not target:
+            print(f"[x] --crawl reuires --target")
+            parser.print(help)
+            sys.exit(2)
 
+        crawler = SkeletonCrawler(
+                max_depth=2,
+                max_pages=200,
+                outdir=outdir
+        )
+        crawler.queue.append((target,0))
+        crawler.start()
     if args.scan:
-        print("[+] Running vulnerability scanner... (not implemented)")
+        print('.')
+
 
     # notify (simple)
     if args.notify:
