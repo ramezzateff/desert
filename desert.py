@@ -2,11 +2,13 @@
 import argparse
 import subprocess
 import sys
-from banner import show_banner
-from notify import send_notification
-from colors import yellow, cyan, reset, RED, GREEN
-from utils import run_bash_script
-from crawler.core import SkeletonCrawler
+from core.logger import logger
+from core.config_loader import Config
+from core.output_manager import OutputManager
+from core.session_manager import SessionManager
+from utils.colors import color_text
+from utils.banner import show_banner
+from utils.bash_utils import run_bash_script
 
 def main():
     show_banner()
@@ -17,8 +19,8 @@ def main():
     )
 
     # global flags
-    parser.add_argument("--target", "-t", type=str, help="Target domain (e.g. example.com)")
-    parser.add_argument("--output", "-o", type=str, default="results", help="Output folder for results")
+    parser.add_argument("--target", "-t", type=str, required=True, help="Target domain (e.g. example.com)")
+    parser.add_argument("--output", "-o", type=str, default="DESERT_out", help="Output folder for results")
     parser.add_argument("--force", "-f", action="store_true", help="Force re-run (overwrite existing outputs)")
     parser.add_argument("--no-probe", action="store_true", help="Skip active probing (httpx)")
 
@@ -42,11 +44,11 @@ def main():
     # SUBENUM handler
     if args.subenum:
         if not target:
-            print(f"{RED}[x] --subenum requires --target. Example: desert --subenum --target example.com{reset}")
+            print(color_text("[x] --subenum requires --target. Example: desert --subenum --target example.com{reset}"), "red")
             parser.print_help()
             sys.exit(2)
 
-        print(f"\n{cyan}[🕸️] Running subdomain enumeration for: {target}{reset}\n")
+        print(color_text(f"\n[🕸️] Running subdomain enumeration for: {target}\n", "cyan"))
 
         bash_args = [target, outdir]
         if args.force:
@@ -55,28 +57,26 @@ def main():
             bash_args.append("--no-probe")
 
         run_bash_script(
-            "../bash/subenum.sh",
+            "modules/subdomain_enumeration/subenum.sh",
             bash_args,
             f"Subdomain enumeration completed. Results saved to: {outdir}/{target}/subenum",
             "Subdomain enumeration script failed to run properly.",
-            (cyan, GREEN, RED)
         )
         return
 
     # URL gathering
     if args.urlgather:
         if not target:
-            print(f"{RED}[x] --urlgather requires --target. Example: desert --urlgather --target example.com{reset}")
+            print(color_text("[x] --urlgather requires --target", "red"))
             parser.print_help()
             sys.exit(2)
 
-        print(f"\n{cyan}[🕸️] Starting URL Gathering for: {target}\n")
+        print(color_text(f"\n[🕸️] Starting URL Gathering for: {target}\n", "cyan"))
         run_bash_script(
-            "../bash/url_gather.sh",
+            "modules/url_gathering/url_gather.sh",
             [target, outdir],
             f"URL Gathering completed. Results saved to: {outdir}/{target}/urls_sorted.txt",
             "URL gathering script failed to run properly.",
-            (cyan, GREEN, RED)
         )
         return
     # other actions (placeholders)
@@ -108,6 +108,6 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print(f"\n{RED}[▲] Interrupted by user.{reset}")
+        print(color_text(f"\n[▲] Interrupted by user.{reset}", "red"))
         sys.exit(1)
 
