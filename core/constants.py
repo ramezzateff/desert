@@ -12,6 +12,8 @@ TEMP_DIR = os.path.join(BASE_DIR, "temp")
 TOOLS = {
     "httpx": "httpx",
     "subfinder": "subfinder",
+    "findomain": "findomain",
+    "assetfinder": "asserfinder",
     "amass": "amass",
     "gau": "gau",
 }

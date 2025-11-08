@@ -1,23 +1,26 @@
 # Colored + structured console output
-from datetime import datetime
+#!/usr/bin/python3
 from utils.colors import color_text
+from datetime import datetime
 
 class Logger:
-    def _log(self, level, message, color):
-        now = datetime.now().strftime("%H:%M:%S")
-        print(f"[{color_text(level, color)}] {now} | {message}")
+    def _log(self, level, color, message):
+        time = datetime.now().strftime("%H:%M:%S")
+        # use color_text before printing
+        colored_msg = color_text(message, color)
+        print(f"[{level}] {time} | {colored_msg}")
 
     def info(self, message):
-        self._log("INFO", message, "cyan")
+        self._log("INFO", "cyan", message)
 
     def success(self, message):
-        self._log("SUCCESS", message, "green")
+        self._log("SUCCESS", "green", message)
 
     def warning(self, message):
-        self._log("WARN", message, "yellow")
+        self._log("WARNING", "yellow", message)
 
     def error(self, message):
-        self._log("ERROR", message, "red")
+        self._log("ERROR", "red", message)
 
+# single logger instance — import this everywhere:
 logger = Logger()
-

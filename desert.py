@@ -2,13 +2,19 @@
 import argparse
 import subprocess
 import sys
-from core.logger import logger
+
+# CORE FUNCTIONS
+from core.logger import logger # handling all print functions
 from core.config_loader import Config
 from core.output_manager import OutputManager
 from core.session_manager import SessionManager
+
+# HELPERS FUNCTIONS
 from utils.colors import color_text
 from utils.banner import show_banner
 from utils.bash_utils import run_bash_script
+
+from modules.crawler.core import SkeletonCrawler
 
 def main():
     show_banner()
@@ -39,16 +45,17 @@ def main():
     args = parser.parse_args()
     target = args.target
     outdir = args.output
+    
 
 
     # SUBENUM handler
     if args.subenum:
         if not target:
-            print(color_text("[x] --subenum requires --target. Example: desert --subenum --target example.com{reset}"), "red")
+            logger.error("[x] --subenum requires --target. Example: desert --subenum --target example.com")
             parser.print_help()
             sys.exit(2)
 
-        print(color_text(f"\n[🕸️] Running subdomain enumeration for: {target}\n", "cyan"))
+        logger.info(f"\n[🕸️] Running subdomain enumeration for: {target}\n")
 
         bash_args = [target, outdir]
         if args.force:
@@ -67,11 +74,11 @@ def main():
     # URL gathering
     if args.urlgather:
         if not target:
-            print(color_text("[x] --urlgather requires --target", "red"))
+            logger.error("[x] --urlgather requires --target")
             parser.print_help()
             sys.exit(2)
 
-        print(color_text(f"\n[🕸️] Starting URL Gathering for: {target}\n", "cyan"))
+        logger.info(f"\n[🕸️] Starting URL Gathering for: {target}\n")
         run_bash_script(
             "modules/url_gathering/url_gather.sh",
             [target, outdir],
@@ -82,7 +89,7 @@ def main():
     # other actions (placeholders)
     if args.crawl:
         if not target:
-            print(f"[x] --crawl reuires --target")
+            logger.error(f"[x] --crawl reuires --target")
             parser.print(help)
             sys.exit(2)
 
@@ -108,6 +115,6 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print(color_text(f"\n[▲] Interrupted by user.{reset}", "red"))
+        logger.error(f"\n[▲] Interrupted by user")
         sys.exit(1)
 
